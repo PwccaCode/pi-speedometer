@@ -1,0 +1,10 @@
+{
+  "name": "pi-speedometer",
+  "version": "1.0.0",
+  "description": "Live output tok/s and TTFT in the pi footer",
+  "keywords": ["pi-package"],
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./.pi/extensions/pi-speedometer.ts"]
+  }
+}
