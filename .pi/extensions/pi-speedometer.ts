@@ -1,10 +1,7 @@
-// pi-speedometer — live output tok/s + TTFT in the footer, refreshed every 200ms.
-// The last speed stays on screen (joined by a live TTFT counter) until the next
-// stream produces a new number, so tool-call gaps don't blank it out.
 // Test: pi -e ./.pi/extensions/pi-speedometer.ts
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-const WINDOW_MS = 3000; // sliding window for the live number
+const WINDOW_MS = 3000;
 const TICK_MS = 200;
 
 export default function (pi: ExtensionAPI) {
@@ -13,11 +10,11 @@ export default function (pi: ExtensionAPI) {
   let timer: ReturnType<typeof setInterval> | undefined;
   let samples: Array<{ t: number; n: number }> = [];
   let chars = 0;
-  let reported = 0; // cumulative output tokens seen so far (0 if provider never reports mid-stream)
-  let start = 0; // assistant message start, for the final average
-  let requestAt = 0; // when the provider request went out — TTFT origin
-  let ttft: number | undefined; // ms to first token of the current request, undefined while waiting
-  let prevSpeed = ""; // last speed line, kept visible across tool calls
+  let reported = 0;
+  let start = 0;
+  let requestAt = 0;
+  let ttft: number | undefined;
+  let prevSpeed = "";
 
   const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
   const waitingLine = () => [prevSpeed, `ttft ${secs(Date.now() - requestAt)}`].filter(Boolean).join(" · ");
@@ -32,16 +29,12 @@ export default function (pi: ExtensionAPI) {
     while (samples.length && now - samples[0]!.t > WINDOW_MS) samples.shift();
 
     const tokens = samples.reduce((sum, s) => sum + s.n, 0);
-    // Two samples minimum, and never divide by a window shorter than a tick — one
-    // lone sample would read as a fantasy number, and a slow-rendering gate would
-    // leave short tool-call bursts showing nothing at all.
     if (samples.length < 2 || tokens <= 0) return;
     const span = Math.max(now - samples[0]!.t, TICK_MS);
     prevSpeed = `${(tokens / (span / 1000)).toFixed(1)} tok/s`;
     ctx.ui.setStatus("speed", `${prevSpeed} · ttft ${secs(ttft)}`);
   }
 
-  // Reset counters but leave the last printed speed on screen.
   function stop() {
     if (timer) clearInterval(timer);
     timer = undefined;
@@ -62,7 +55,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("before_provider_request", async (_event, ctx0) => {
     if (!enabled) return;
-    stop(); // clears last turn's counters, not the on-screen number
+    stop();
     requestAt = Date.now();
     tick(ctx0);
   });
@@ -88,7 +81,7 @@ export default function (pi: ExtensionAPI) {
     let delta: number;
     const usage = e.partial.usage?.output ?? 0;
     if (usage > 0) {
-      delta = usage - reported; // provider reports cumulative output tokens
+      delta = usage - reported;
       reported = usage;
     } else {
       delta = chars / 4 - reported; // ponytail: chars/4 estimate until real usage arrives
